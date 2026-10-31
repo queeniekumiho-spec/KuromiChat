@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>มุมพักใจ - Kuromi Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{--kuromi-black:#1f1d24;--kuromi-purple:#9275b8;--kuromi-light-purple:#d8b4e2;--kuromi-pink:#ff6eb4;--bg-dark:#121016}
+body{margin:0;font-family:'Kanit',sans-serif;background-color:var(--bg-dark);background-image:radial-gradient(var(--kuromi-purple) 1px,transparent 1px);background-size:25px 25px;display:flex;justify-content:center;align-items:center;height:100vh;height:100dvh;color:#fff}
+.chat-container{box-sizing:border-box;width:95%;max-width:500px;height:90vh;height:90dvh;background:var(--kuromi-black);border:4px solid var(--kuromi-purple);border-radius:25px;box-shadow:0 10px 30px rgba(0,0,0,.8),0 0 15px rgba(255,110,180,.4);display:flex;flex-direction:column;overflow:hidden}
+.header{position:relative;background:var(--kuromi-purple);padding:15px;text-align:center;font-size:1.4em;font-weight:600;border-bottom:4px solid var(--kuromi-pink)}
+.mute-btn{position:absolute;right:15px;top:50%;transform:translateY(-50%);border:none;font-size:1.2em;cursor:pointer;padding:5px;border-radius:50%;background:rgba(0,0,0,.2);transition:background-color .3s}
+.mute-btn:hover{background:var(--kuromi-pink)}
+.notice{padding:6px 12px;font-size:.75em;text-align:center;color:var(--kuromi-light-purple);background:#1a181e}
+.status{padding:6px;font-size:.85em;text-align:center;background:var(--kuromi-pink);color:var(--kuromi-black)}
+.chat-box{flex-grow:1;padding:15px;overflow-y:auto;display:flex;flex-direction:column;gap:15px;background:rgba(31,29,36,.85)}
+.chat-box::-webkit-scrollbar{width:8px}
+.chat-box::-webkit-scrollbar-thumb{background:var(--kuromi-pink);border-radius:10px}
+.message-row{display:flex;gap:10px;align-items:flex-end}
+.message-row.self{flex-direction:row-reverse}
+.avatar-img{width:40px;height:40px;flex-shrink:0;border-radius:50%;border:2px solid var(--kuromi-purple);object-fit:cover;background:#fff}
+.message-row.self .avatar-img{border-color:var(--kuromi-pink)}
+.message{max-width:75%;padding:10px 16px;border-radius:18px;font-size:.95em;line-height:1.4;overflow-wrap:anywhere}
+.msg-others{background:#352f40;border-bottom-left-radius:5px;border-left:3px solid var(--kuromi-light-purple)}
+.msg-self{background:#634b82;border-bottom-right-radius:5px;border-right:3px solid var(--kuromi-pink)}
+.msg-sender{font-size:.75em;color:var(--kuromi-pink);margin-bottom:4px;font-weight:600}
+.msg-self .msg-sender{color:var(--kuromi-light-purple)}
+.system-msg{text-align:center;color:var(--kuromi-pink);font-size:.85em;margin:10px 0}
+.profile-settings{display:flex;align-items:center;gap:10px;padding:10px 15px;background:#1a181e;border-top:2px solid var(--kuromi-purple)}
+input[type=text]{font-family:inherit;font-size:16px;color:#fff;background:var(--bg-dark);border:2px solid var(--kuromi-purple)}
+input[type=text]:focus{border-color:var(--kuromi-pink)}
+#nameInput{width:100px;padding:8px 12px;border-radius:8px}
+.avatar-selector{display:flex;gap:8px}
+.avatar-selector label{position:relative}
+.avatar-selector input{position:absolute;opacity:0;width:1px;height:1px}
+.avatar-selector img{display:block;width:35px;height:35px;border-radius:50%;border:2px solid transparent;object-fit:cover;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s}
+.avatar-selector input:checked+img{border-color:var(--kuromi-pink);transform:scale(1.15);box-shadow:0 0 10px var(--kuromi-pink)}
+.avatar-selector input:focus-visible+img{outline:2px solid #fff;outline-offset:2px}
+.input-area{display:flex;gap:8px;padding:12px;background:var(--kuromi-black)}
+#msgInput{flex-grow:1;min-width:0;padding:12px;border-radius:12px;outline:none}
+button[type=submit]{padding:0 20px;border:none;border-radius:12px;background:var(--kuromi-pink);color:#fff;font-family:inherit;font-size:1em;font-weight:600;cursor:pointer;transition:background-color .3s,transform .3s}
+button[type=submit]:hover:not(:disabled){background:#ff479d;transform:scale(1.05)}
+button[type=submit]:disabled{opacity:.5;cursor:not-allowed}
+</style>
+</head>
+<body>
+
+<div class="chat-container">
+  <div class="header">
+    🖤 มุมพักใจ Chat 💜
+    <button id="toggleSoundBtn" class="mute-btn" type="button" aria-label="เปิด/ปิดเสียงแจ้งเตือน" aria-pressed="false">🔊</button>
+  </div>
+  <div class="notice">👀 ห้องสาธารณะ ทุกคนเห็นข้อความ แชทถูกล้างทุกวัน อย่าแชร์ข้อมูลส่วนตัวนะ</div>
+  <div class="status" id="status" role="status">⏳ กำลังเชื่อมต่อ… (ถ้าเว็บเพิ่งตื่น อาจใช้เวลาสักครู่)</div>
+  <div class="chat-box" id="chatBox" role="log" aria-live="polite"></div>
+
+  <!-- ชื่อ + รูปโปรไฟล์ (ปุ่มรูปถูกสร้างจาก AVATARS ในสคริปต์) -->
+  <div class="profile-settings">
+    <input type="text" id="nameInput" form="chatForm" placeholder="ชื่อของคุณ" aria-label="ชื่อของคุณ" maxlength="20" pattern=".*\S.*" required autocomplete="nickname">
+    <div class="avatar-selector" id="avatarPicker" role="radiogroup" aria-label="เลือกรูปโปรไฟล์"></div>
+  </div>
+
+  <form class="input-area" id="chatForm">
+    <input type="text" id="msgInput" placeholder="พิมพ์ข้อความ..." aria-label="พิมพ์ข้อความ" maxlength="500" pattern=".*\S.*" required autocomplete="off">
+    <button type="submit" id="sendBtn">ส่ง 🎀</button>
+  </form>
+</div>
+
+<audio id="chatSound" src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3" preload="auto"></audio>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// รูปโปรไฟล์: แก้ที่นี่ที่เดียว (ถ้าเพิ่ม/ลดจำนวน ให้แก้ AVATAR_COUNT ใน server.js ให้ตรงกัน)
+const AVATARS = [
+  'https://i.pinimg.com/736x/8f/b4/eb/8fb4eb27a202bc8fbf12bb09c6934c9c.jpg',
+  'https://i.pinimg.com/736x/ec/c0/8b/ecc08b7381b8fbf1df3f707f1bd03164.jpg',
+  'https://i.pinimg.com/736x/89/3b/b9/893bb9e32dd294ff41c0e352d11e1f1f.jpg',
+  'https://i.pinimg.com/736x/32/38/c2/3238c2cf9bb55fde69be51296c0543ee.jpg'
+];
+
+const $ = id => document.getElementById(id);
+const chatBox = $('chatBox'), chatForm = $('chatForm'), nameInput = $('nameInput'), msgInput = $('msgInput'),
+      sendBtn = $('sendBtn'), statusBar = $('status'), sound = $('chatSound'), muteBtn = $('toggleSoundBtn'),
+      picker = $('avatarPicker');
+
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} }
+};
+
+// ID ประจำเครื่อง ใช้ระบุว่าข้อความไหนเป็นของเรา (ไม่พึ่งชื่อ)
+let myId = store.get('uid');
+if (!myId) {
+  myId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
+  store.set('uid', myId);
+}
+
+// คืนค่าชื่อ/รูปที่เคยเลือก แล้วสร้างปุ่มเลือกรูป
+nameInput.value = store.get('name') || '';
+let avatarId = Number(store.get('avatar'));
+if (!AVATARS[avatarId]) avatarId = 0;
+AVATARS.forEach((url, i) => {
+  const label = document.createElement('label');
+  label.innerHTML = `<input type="radio" name="avatar" value="${i}" aria-label="รูปโปรไฟล์ ${i + 1}"><img alt="" referrerpolicy="no-referrer">`;
+  label.querySelector('input').checked = i === avatarId;
+  label.querySelector('img').src = url;
+  picker.appendChild(label);
+});
+
+// ปุ่มเปิด/ปิดเสียง (จำค่าไว้)
+sound.volume = 0.5;
+let muted = store.get('muted') === '1';
+const renderMute = () => {
+  muteBtn.textContent = muted ? '🔇' : '🔊';
+  muteBtn.setAttribute('aria-pressed', muted);
+};
+renderMute();
+muteBtn.addEventListener('click', () => {
+  muted = !muted;
+  store.set('muted', muted ? '1' : '0');
+  renderMute();
+  if (!muted) sound.play().catch(() => {}); // เทสเสียงตอนกดเปิด
+});
+
+// สร้างกล่องข้อความ: ใช้ textContent เสมอ เพื่อกัน XSS
+function createMessage(d) {
+  const isSelf = d.userId === myId;
+  const row = document.createElement('div');
+  row.className = 'message-row' + (isSelf ? ' self' : '');
+
+  const img = document.createElement('img');
+  img.className = 'avatar-img';
+  img.alt = '';
+  img.referrerPolicy = 'no-referrer';
+  img.src = AVATARS[d.avatarId] || AVATARS[0];
+
+  const box = document.createElement('div');
+  box.className = 'message ' + (isSelf ? 'msg-self' : 'msg-others');
+  const sender = document.createElement('div');
+  sender.className = 'msg-sender';
+  sender.textContent = d.name;
+  const text = document.createElement('div');
+  text.textContent = d.text;
+  box.append(sender, text);
+
+  row.append(img, box);
+  return row;
+}
+
+const scrollDown = () => { chatBox.scrollTop = chatBox.scrollHeight; };
+const nearBottom = () => chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 80;
+
+// เลื่อนลงเฉพาะตอนอยู่ใกล้ล่างสุด (หรือเป็นข้อความของเราเอง) และเก็บไม่เกิน 200 รายการ
+function addToChat(el, force) {
+  const stick = force || nearBottom();
+  chatBox.appendChild(el);
+  while (chatBox.children.length > 200) chatBox.firstChild.remove();
+  if (stick) scrollDown();
+}
+function addSystem(t) {
+  const el = document.createElement('div');
+  el.className = 'system-msg';
+  el.textContent = t;
+  addToChat(el);
+}
+
+// ---- Socket ----
+const socket = io();
+const setOnline = ok => { statusBar.hidden = ok; sendBtn.disabled = !ok; };
+setOnline(false);
+socket.on('connect', () => setOnline(true));
+socket.on('disconnect', () => setOnline(false));
+socket.on('connect_error', () => setOnline(false));
+
+socket.on('load-history', history => {
+  const frag = document.createDocumentFragment();
+  history.forEach(d => frag.appendChild(createMessage(d)));
+  chatBox.replaceChildren(frag);
+  scrollDown();
+});
+
+socket.on('chat-message', d => {
+  const mine = d.userId === myId;
+  addToChat(createMessage(d), mine);
+  if (!muted && !mine) {
+    sound.currentTime = 0;
+    sound.play().catch(() => {}); // เบราว์เซอร์อาจบล็อกจนกว่าผู้ใช้จะคลิกหน้าเว็บ
+  }
+});
+
+socket.on('clear-chat', () => {
+  chatBox.replaceChildren();
+  addSystem('💀 ระบบได้ล้างประวัติแชทเริ่มต้นวันใหม่แล้ว 💀');
+});
+socket.on('notice', addSystem);
+
+chatForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const name = nameInput.value.trim(), text = msgInput.value.trim();
+  if (!name || !text || !socket.connected) return;
+  avatarId = Number(document.querySelector('input[name="avatar"]:checked').value);
+  store.set('name', name);
+  store.set('avatar', avatarId);
+  socket.emit('chat-message', { userId: myId, name, avatarId, text });
+  msgInput.value = '';
+  msgInput.focus();
+});
+</script>
+
+</body>
+</html>
